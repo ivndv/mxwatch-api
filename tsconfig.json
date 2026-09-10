@@ -1,17 +1,17 @@
 {
 	"compilerOptions": {
-		// --- OPTIMIZACIONES ---
-		"target": "ESNext", // JS moderno
-		"module": "ESNext", // Soporta import/export nativo
-		"moduleResolution": "Bundler", // Ideal para Bun/Vite
+		// Entorno y módulos modernos compatibles con el runtime de Bun
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
 
-		// --- CALIDAD ---
-		"strict": true, // Tipado fuerte
-		"skipLibCheck": true, // Ignorar tipos de node_modules (compila más rápido)
+		// Verificación estricta de tipos y optimización de compilación
+		"strict": true,
+		"skipLibCheck": true,
 		"lib": ["ESNext"],
 
-		// --- VISTAS / HONO ---
-		"jsx": "react-jsx", // Sintaxis similar a HTML/React
-		"jsxImportSource": "hono/jsx" // Usa el JSX ultra rápido de Hono, no React
+		// Soporte JSX nativo de alto rendimiento mediante el motor de Hono
+		"jsx": "react-jsx",
+		"jsxImportSource": "hono/jsx"
 	}
 }

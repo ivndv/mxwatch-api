@@ -1,3 +1,6 @@
+# MXWatch API CI/CD — lint -> test -> deploy (Dokploy VPS solo en push a main)
+# Flujo: push/PR a main/develop dispara lint y test en paralelo; deploy solo en main
+
 name: MXWatch API CI/CD
 
 on:
@@ -11,23 +14,26 @@ on:
       - develop
 
 jobs:
+  # lint: Biome lint + format — fail fast, bloquea deploy
   lint:
+    name: Lint & Formato (Biome)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Descargar código fuente del repositorio
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Configurar entorno de Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24.14.1"
 
-      - name: Setup Bun
+      - name: Configurar runtime de Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.3.13"
 
-      - name: Cache node_modules
+      # Caché de node_modules basado en el hash del lockfile para acelerar el pipeline
+      - name: Restaurar / Guardar caché de node_modules
         uses: actions/cache@v4
         with:
           path: node_modules
@@ -35,32 +41,35 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
 
-      - name: Install dependencies
+      - name: Instalar dependencias con Bun
         run: bun install
 
-      - name: Lint
+      - name: Ejecutar linter con Biome
         run: bun run lint
 
-      - name: Format check
+      - name: Verificar formato de código con Biome
         run: bun run check
 
+  # test: suite de pruebas automatizadas
   test:
+    name: Pruebas Automatizadas
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Descargar código fuente del repositorio
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Configurar entorno de Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24.14.1"
 
-      - name: Setup Bun
+      - name: Configurar runtime de Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.3.13"
 
-      - name: Cache node_modules
+      # Caché de node_modules reutilizado entre jobs concurrentes
+      - name: Restaurar / Guardar caché de node_modules
         uses: actions/cache@v4
         with:
           path: node_modules
@@ -68,27 +77,29 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
 
-      - name: Install dependencies
+      - name: Instalar dependencias con Bun
         run: bun install
 
-      - name: Run tests
+      - name: Ejecutar suite de pruebas
         run: bun run test
 
+  # deploy: Dokploy VPS solo en push a main y con todo verde
   deploy:
+    name: Despliegue en VPS (Dokploy)
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via Dokploy API
+      - name: Ejecutar trigger de despliegue vía Dokploy API por SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            echo "Deploying mxwatch-api via Dokploy API..."
+            echo "Iniciando despliegue de mxwatch-api en Dokploy..."
             curl -X POST 'http://localhost:3000/api/application.deploy' \
               -H 'Content-Type: application/json' \
               -H 'x-api-key: ${{ secrets.DOKPLOY_API_TOKEN }}' \
               -d '{"applicationId": "${{ secrets.DOKPLOY_APP_ID }}"}'
-            echo "Deploy complete!"
+            echo "Despliegue completado exitosamente!"
