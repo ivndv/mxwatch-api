@@ -63,6 +63,16 @@ app.openAPIRegistry.registerComponent(
 	SECURITY_SCHEME,
 );
 
+// Ruta de bienvenida pública
+app.get("/", (c) =>
+	c.json({
+		nombre: "mxwatch-api",
+		version: env.API_VERSION,
+		estado: "activo",
+		docs: "/api/docs",
+	}),
+);
+
 // Ensamblado final con documentación y error handler
 const appConRutas = app
 	.route("/api", api)
@@ -72,6 +82,11 @@ const appConRutas = app
 		console.error("Error no capturado:", err);
 		return c.json({ exito: false, error: "Error interno del servidor" }, 500);
 	});
+
+console.log(
+	`🚀 mxwatch-api v${env.API_VERSION} corriendo en http://localhost:${env.PORT}`,
+);
+console.log(`📖 Documentación Swagger: http://localhost:${env.PORT}/api/docs`);
 
 export type AppType = typeof appConRutas;
 
