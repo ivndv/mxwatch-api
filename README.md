@@ -1,68 +1,85 @@
-# MXWatch (Backend API)
+# MXWatch API
 
 ## Descripción
 
-Este proyecto funciona como la API central de datos para la plataforma MXWatch. Su principal responsabilidad es consultar, gestionar y proveer toda la información estadística y geográfica que de forma simultánea consume y muestra al público el mapa interactivo.
+API central de datos para la plataforma MXWatch. Provee servicios de consulta y gestión de información territorial, presencia de organizaciones por estado, perfiles analíticos y eventos geográficos en todo el país.
 
 ## Características
 
-- **Inventario Relacional**: Estructura de base de datos eficiente que entrelaza áreas geográficas, organizaciones y actividad específica.
-- **Consultas Veloces**: Diseño optimizado en tiempos de respuesta para asegurar que la visualización del mapa nunca se trabe.
-- **Información Cruzada**: Sistema inteligente que filtra y devuelve datos vinculados de manera correcta evitando la duplicación de reportes.
-- **Tipado Seguro**: Diseño estricto de reglas compartidas automáticamente con la plataforma visual.
+- **Documentación OpenAPI**: Especificación OpenAPI y Swagger UI interactivo integrados de forma nativa con validación por Zod.
+- **Seguridad y Resiliencia**: Autenticación por cabecera `x-api-key`, rate limiting por IP, cabeceras seguras y límite de tamaño en peticiones.
+- **Consultas Relacionales**: Acceso a datos y esquemas tipados mediante Drizzle ORM sobre PostgreSQL.
+- **Alto Rendimiento**: Construido sobre Hono y Bun para respuestas ágiles y bajo consumo de memoria.
 
-## Secciones
+## Endpoints
 
-1. **Catálogos Maestros**: Espacios para registrar y administrar la información inamovible (Ej. listas de estados u organizaciones existentes).
-2. **Registro Geográfico Central**: Tabla que funge como eje principal conectando una geolocalización o estado con las actividades reportadas en la misma.
-3. **Tablas Dinámicas**: Apartado para adjuntar de forma aislada información sensible adicional (líderes, grupos o incidencias).
+- `GET /api/health`: Estado del servicio.
+- `GET /api/map`: Información territorial consolidada para el mapa.
+- `GET /api/cartels`: Catálogo de organizaciones y niveles de presencia territorial.
+- `GET /api/cartel/:slug`: Perfil detallado de una organización por su identificador.
+- `GET /api/state/:name`: Detalle territorial y organizaciones por entidad federativa.
+- `GET /api/docs`: Documentación interactiva Swagger UI.
 
 ## Uso
 
-- **Integración Nativa**: Este proyecto entrega toda su carga en formato JSON para que el frontend pueda estructurar gráficos inmediatamente.
-- **Endpoints Flexibles**: Cuenta con rutas ligeras utilizadas al cargar el sitio principal y rutas profundas que se activan solo al solicitar datos extensos de un estado.
+Las rutas de datos requieren enviar una clave de API en la cabecera HTTP:
+
+```http
+x-api-key: tu_api_key_aqui
+```
+
+Las rutas `/api/health`, `/api/docs` y `/api/doc` son de acceso público sin autenticación.
 
 ## Tecnologías Utilizadas
 
-- Node.js / Bun
-- Hono
-- PostgreSQL
-- Drizzle ORM
-- Biome
+- **Runtime**: Bun
+- **Framework**: Hono, @hono/zod-openapi, @hono/swagger-ui
+- **Base de Datos & ORM**: PostgreSQL, Drizzle ORM
+- **Validación**: Zod
+- **Seguridad**: hono-rate-limiter
+- **Linter & Formateo**: Biome, TypeScript
+- **Contenedor**: Docker
 
 ## Instalación
 
-1. **Clonar el Repositorio**: Descarga este repositorio en tu computadora usando Git.
+1. **Clonar el Repositorio**:
 
 ```bash
-git clone https://github.com/Ivandv19/mxwatch-api.git
+git clone https://github.com/ivndv/mxwatch-api.git
 ```
 
-2. **Instalar Dependencias**: Entra a la carpeta del proyecto desde la terminal y ejecuta:
+2. **Instalar Dependencias**:
 
 ```bash
 bun install
 ```
 
-3. **Variables de Entorno**: Crea un archivo `.dev.vars` (que es el equivalente a `.env` en infraestructuras Cloudflare). Deberás colocar `DATABASE_URL` vinculándolo a la raíz de tu base de datos PostgreSQL.
+3. **Variables de Entorno**: Crea un archivo `.env` en la raíz (puedes guiarte con `.env.example`):
 
-4. **Iniciar el Servidor**: Enciende la API en tu entorno local usando el comando:
-
-```bash
-bun run dev
+```env
+DATABASE_URL=postgresql://postgres:password@127.0.0.1:5432/mxwatch_db
+API_KEY=tu_api_key_aqui
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+PORT=3001
+API_VERSION=1.0.0
 ```
 
-## Créditos
+4. **Iniciar el Servidor**:
 
-Este es el proyecto backend encargado del esquema y control operativo del mapa gráfico.
+```bash
+# Servidor de desarrollo con recarga en caliente:
+bun run dev
 
-- Desarrollado por Ivan Cruz.
+# Aplicar cambios de esquema a la base de datos:
+bun run db:push
+
+# Cargar datos iniciales:
+bun run db:seed
+```
 
 ## Despliegue
 
-## Despliegue
-
-Este motor de datos se encuentra desplegado y administrado permanentemente a través de **Dokploy** en un servidor VPS. Puedes consultar la documentación interactiva de la API (Swagger) en: [http://mxwatch-api.fluxdv.icu/api/docs](http://mxwatch-api.fluxdv.icu/api/docs) o en tu entorno local en `http://localhost:3001/api/docs`.
+Desplegado con Dokploy en VPS. Documentación Swagger disponible en: [mxwatch-api](http://mxwatch-api.fluxdv.icu/api/docs)
 
 ## Licencia
 
