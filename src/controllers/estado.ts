@@ -3,8 +3,27 @@ import type { Context } from "hono";
 import { db } from "../db";
 import { estados, personas } from "../db/schema";
 
+interface DetalleEstadoData {
+	nombre_estado: string;
+	slug_estado: string;
+	total_carteles: number;
+	carteles: Array<{
+		id: string;
+		nombre: string;
+		slug: string;
+		color: string;
+		jefes: Array<{ id?: string; nombre: string; alias: string | null }>;
+		facciones: Array<{ id?: string; nombre: string; enfoque: string | null }>;
+		personas: Array<{ id?: string; nombre: string; alias: string | null }>;
+		brazos_armados?: Array<{ id?: string; nombre: string }>;
+	}>;
+}
+
 // Micro-caché en RAM por estado (TTL de 5 minutos)
-const cacheEstados = new Map<string, { datos: unknown; expira: number }>();
+const cacheEstados = new Map<
+	string,
+	{ datos: DetalleEstadoData; expira: number }
+>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export function invalidarCacheEstados(): void {
@@ -23,7 +42,7 @@ export async function obtenerEstadoPorNombre(c: Context) {
 		// Respuesta inmediata si está en caché y vigente
 		const enCache = cacheEstados.get(cacheKey);
 		if (enCache && ahora < enCache.expira) {
-			return c.json({ exito: true, datos: enCache.datos }, 200);
+			return c.json({ exito: true as const, datos: enCache.datos }, 200);
 		}
 
 		// Consulta el estado con todas sus relaciones
@@ -75,7 +94,7 @@ export async function obtenerEstadoPorNombre(c: Context) {
 		}
 
 		// Respuesta con carteles, facciones, operadores y brazos armados
-		const datosRespuesta = {
+		const datosRespuesta: DetalleEstadoData = {
 			nombre_estado: stateRecord.nombre,
 			slug_estado: stateRecord.slug,
 			total_carteles: stateRecord.presencias.length,
@@ -113,7 +132,7 @@ export async function obtenerEstadoPorNombre(c: Context) {
 			expira: ahora + CACHE_TTL_MS,
 		});
 
-		return c.json({ exito: true, datos: datosRespuesta }, 200);
+		return c.json({ exito: true as const, datos: datosRespuesta }, 200);
 	} catch (_error) {
 		return c.json({ exito: false, error: "Error de base de datos" }, 500);
 	}

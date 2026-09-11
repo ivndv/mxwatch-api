@@ -3,12 +3,44 @@ import type { Context } from "hono";
 import { db } from "../db";
 import { carteles } from "../db/schema";
 
+interface CartelItem {
+	id: string;
+	nombre: string;
+	slug: string;
+	color: string;
+}
+
+interface ListaCartelesData {
+	exito: true;
+	datos: CartelItem[];
+	conteo: number;
+}
+
+interface DetalleCartelData {
+	id: string;
+	nombre: string;
+	slug: string;
+	color: string;
+	presencia: {
+		estados: Array<{ nombre_estado: string }>;
+		total_estados: number;
+	};
+	facciones: Array<{ nombre: string; enfoque: string | null; id?: string }>;
+	personas: Array<{ nombre: string; alias: string | null; id?: string }>;
+	brazos_armados: Array<{ nombre: string; id?: string }>;
+}
+
+interface DetalleCartelRespuesta {
+	exito: true;
+	datos: DetalleCartelData;
+}
+
 // Micro-caché en RAM (TTL de 5 minutos)
-let cacheListaCarteles: unknown = null;
+let cacheListaCarteles: ListaCartelesData | null = null;
 let expiraListaCarteles = 0;
 const cacheDetalleCartel = new Map<
 	string,
-	{ datos: unknown; expira: number }
+	{ datos: DetalleCartelRespuesta; expira: number }
 >();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -30,8 +62,8 @@ export async function listarCarteles(c: Context) {
 			orderBy: (carteles, { asc }) => [asc(carteles.nombre)],
 		});
 
-		const respuesta = {
-			exito: true,
+		const respuesta: ListaCartelesData = {
+			exito: true as const,
 			datos: allCarteles.map((cr) => ({
 				id: cr.id,
 				nombre: cr.nombre,
@@ -110,8 +142,8 @@ export async function obtenerCartelPorSlug(c: Context) {
 		});
 
 		// Respuesta con presencia, facciones, personas y brazos armados
-		const datosRespuesta = {
-			exito: true,
+		const datosRespuesta: DetalleCartelRespuesta = {
+			exito: true as const,
 			datos: {
 				id: cartelRecord.id,
 				nombre: cartelRecord.nombre,
