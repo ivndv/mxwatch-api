@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
 	index,
@@ -27,36 +27,22 @@ export const severityEnum = pgEnum("severity", [
 
 // 1. Catálogos maestros
 
-// Cárteles registrados
-export const carteles = pgTable(
-	"carteles",
-	{
-		id: uuid("id").defaultRandom().primaryKey(),
-		nombre: varchar("nombre", { length: 255 }).notNull().unique(),
-		slug: varchar("slug", { length: 255 }).notNull().unique(),
-		color: varchar("color", { length: 50 }).notNull(),
-		...timestamps,
-	},
-	(table) => ({
-		slugIdx: index("carteles_slug_idx").on(table.slug),
-		nombreIdx: index("carteles_nombre_idx").on(table.nombre),
-	}),
-);
+// Cárteles registrados (slug y nombre ya cuentan con índice único implícito)
+export const carteles = pgTable("carteles", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	nombre: varchar("nombre", { length: 255 }).notNull().unique(),
+	slug: varchar("slug", { length: 255 }).notNull().unique(),
+	color: varchar("color", { length: 50 }).notNull(),
+	...timestamps,
+});
 
-// Estados de la república
-export const estados = pgTable(
-	"estados",
-	{
-		id: uuid("id").defaultRandom().primaryKey(),
-		nombre: varchar("nombre", { length: 255 }).notNull().unique(),
-		slug: varchar("slug", { length: 255 }).notNull().unique(),
-		...timestamps,
-	},
-	(table) => ({
-		slugIdx: index("estados_slug_idx").on(table.slug),
-		nombreIdx: index("estados_nombre_idx").on(table.nombre),
-	}),
-);
+// Estados de la república (slug y nombre ya cuentan con índice único implícito)
+export const estados = pgTable("estados", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	nombre: varchar("nombre", { length: 255 }).notNull().unique(),
+	slug: varchar("slug", { length: 255 }).notNull().unique(),
+	...timestamps,
+});
 
 // Personas (jefes y operadores)
 export const personas = pgTable(
@@ -75,7 +61,10 @@ export const personas = pgTable(
 		nombreIdx: index("personas_nombre_idx").on(table.nombre),
 		aliasIdx: index("personas_alias_idx").on(table.alias),
 		cartelIdx: index("personas_cartel_idx").on(table.cartelId),
-		jefeIdx: index("personas_jefe_idx").on(table.esJefe),
+		// Índice parcial: indexa cartel_id solo para registros donde es_jefe sea verdadero
+		jefeCartelIdx: index("personas_jefe_cartel_idx")
+			.on(table.cartelId)
+			.where(sql`${table.esJefe} = true`),
 	}),
 );
 
@@ -92,7 +81,6 @@ export const facciones = pgTable(
 		...timestamps,
 	},
 	(table) => ({
-		nombreIdx: index("facciones_nombre_idx").on(table.nombre),
 		cartelIdx: index("facciones_cartel_idx").on(table.cartelId),
 	}),
 );
@@ -109,23 +97,16 @@ export const brazosArmados = pgTable(
 		...timestamps,
 	},
 	(table) => ({
-		nombreIdx: index("brazos_armados_nombre_idx").on(table.nombre),
 		cartelIdx: index("brazos_armados_cartel_idx").on(table.cartelId),
 	}),
 );
 
 // Actividades económicas (catálogo)
-export const actividadesEconomicas = pgTable(
-	"actividades_economicas",
-	{
-		id: uuid("id").defaultRandom().primaryKey(),
-		nombre: varchar("nombre", { length: 255 }).notNull().unique(),
-		...timestamps,
-	},
-	(table) => ({
-		nombreIdx: index("actividades_economicas_nombre_idx").on(table.nombre),
-	}),
-);
+export const actividadesEconomicas = pgTable("actividades_economicas", {
+	id: uuid("id").defaultRandom().primaryKey(),
+	nombre: varchar("nombre", { length: 255 }).notNull().unique(),
+	...timestamps,
+});
 
 // 2. Núcleo — Presencias (relación cartel-estado)
 

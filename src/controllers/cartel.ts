@@ -3,25 +3,48 @@ import type { Context } from "hono";
 import { db } from "../db";
 import { carteles } from "../db/schema";
 
+// Micro-caché en RAM (TTL de 5 minutos)
+let cacheListaCarteles: unknown = null;
+let expiraListaCarteles = 0;
+const cacheDetalleCartel = new Map<
+	string,
+	{ datos: unknown; expira: number }
+>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+export function invalidarCacheCarteles(): void {
+	cacheListaCarteles = null;
+	expiraListaCarteles = 0;
+	cacheDetalleCartel.clear();
+}
+
 // Lista todos los cárteles ordenados por nombre
 export async function listarCarteles(c: Context) {
 	try {
+		const ahora = Date.now();
+		if (cacheListaCarteles && ahora < expiraListaCarteles) {
+			return c.json(cacheListaCarteles, 200);
+		}
+
 		const allCarteles = await db.query.carteles.findMany({
 			orderBy: (carteles, { asc }) => [asc(carteles.nombre)],
 		});
-		return c.json(
-			{
-				exito: true,
-				datos: allCarteles.map((cr) => ({
-					id: cr.id,
-					nombre: cr.nombre,
-					slug: cr.slug,
-					color: cr.color,
-				})),
-				conteo: allCarteles.length,
-			},
-			200,
-		);
+
+		const respuesta = {
+			exito: true,
+			datos: allCarteles.map((cr) => ({
+				id: cr.id,
+				nombre: cr.nombre,
+				slug: cr.slug,
+				color: cr.color,
+			})),
+			conteo: allCarteles.length,
+		};
+
+		cacheListaCarteles = respuesta;
+		expiraListaCarteles = ahora + CACHE_TTL_MS;
+
+		return c.json(respuesta, 200);
 	} catch (_error) {
 		return c.json({ exito: false, error: "Error de base de datos" }, 500);
 	}
@@ -32,6 +55,13 @@ export async function obtenerCartelPorSlug(c: Context) {
 	try {
 		// Parámetro validado por Zod en el route
 		const { slug } = c.req.param() as { slug: string };
+		const ahora = Date.now();
+		const cacheKey = slug.toLowerCase();
+
+		const enCache = cacheDetalleCartel.get(cacheKey);
+		if (enCache && ahora < enCache.expira) {
+			return c.json(enCache.datos, 200);
+		}
 
 		// Consulta el cártel con todas sus relaciones
 		const cartelRecord = await db.query.carteles.findFirst({
@@ -80,25 +110,29 @@ export async function obtenerCartelPorSlug(c: Context) {
 		});
 
 		// Respuesta con presencia, facciones, personas y brazos armados
-		return c.json(
-			{
-				exito: true,
-				datos: {
-					id: cartelRecord.id,
-					nombre: cartelRecord.nombre,
-					slug: cartelRecord.slug,
-					color: cartelRecord.color,
-					presencia: {
-						estados: statePresence,
-						total_estados: statePresence.length,
-					},
-					facciones: Array.from(uniqueFactions.values()),
-					personas: Array.from(uniqueLeaders.values()),
-					brazos_armados: Array.from(uniqueArmedWings.values()),
+		const datosRespuesta = {
+			exito: true,
+			datos: {
+				id: cartelRecord.id,
+				nombre: cartelRecord.nombre,
+				slug: cartelRecord.slug,
+				color: cartelRecord.color,
+				presencia: {
+					estados: statePresence,
+					total_estados: statePresence.length,
 				},
+				facciones: Array.from(uniqueFactions.values()),
+				personas: Array.from(uniqueLeaders.values()),
+				brazos_armados: Array.from(uniqueArmedWings.values()),
 			},
-			200,
-		);
+		};
+
+		cacheDetalleCartel.set(cacheKey, {
+			datos: datosRespuesta,
+			expira: ahora + CACHE_TTL_MS,
+		});
+
+		return c.json(datosRespuesta, 200);
 	} catch (_error) {
 		return c.json({ exito: false, error: "Error de base de datos" }, 500);
 	}
