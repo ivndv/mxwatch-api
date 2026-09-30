@@ -1,0 +1,47 @@
+# Action compuesta: configura Node.js y Bun con caché de dependencias
+name: Setup Bun env
+description: Configura Node, Bun, caché de node_modules e instala dependencias con Bun
+
+inputs:
+  # Versiones centralizadas del pipeline
+  node-version:
+    description: Versión de Node.js a utilizar
+    required: false
+    default: "24.19.0"
+  bun-version:
+    description: Versión de Bun a utilizar
+    required: false
+    default: "1.3.14"
+  install-args:
+    description: Flags extra para bun install
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    # 1. Configura el runtime de Node.js
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    # 2. Configura el runtime oficial de Bun
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ inputs.bun-version }}
+
+    # 3. Restaura la caché de node_modules usando el hash de bun.lock
+    - name: Cache node_modules
+      uses: actions/cache@v6
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-bun-
+
+    # 4. Instala las dependencias del proyecto
+    - name: Install dependencies
+      shell: bash
+      run: bun install ${{ inputs.install-args }}

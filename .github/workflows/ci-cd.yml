@@ -1,8 +1,7 @@
-# MXWatch API CI/CD — lint -> test -> deploy (Dokploy VPS solo en push a main)
-# Flujo: push/PR a main/develop dispara lint y test en paralelo; deploy solo en main
-
+# MXWatch API CI/CD: lint y test en paralelo, deploy a Dokploy (VPS) solo en push a main
 name: MXWatch API CI/CD
 
+# Disparadores: pushes y pull requests a las ramas principales
 on:
   push:
     branches:
@@ -13,84 +12,59 @@ on:
       - main
       - develop
 
+# Cancela ejecuciones previas del mismo ref para no gastar minutos de CI
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Permisos mínimos: solo lectura del repositorio
+permissions:
+  contents: read
+
 jobs:
-  # lint: Biome lint + format — fail fast, bloquea deploy
+  # Job 1: lint y verificación de formato con Biome
   lint:
-    name: Lint & Formato (Biome)
+    name: Lint & Format Check
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar código fuente del repositorio
-        uses: actions/checkout@v4
+      # 1. Clona el repositorio
+      - name: Checkout code
+        uses: actions/checkout@v7
 
-      - name: Configurar entorno de Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24.14.1"
+      # 2. Configura Node, Bun y dependencias con caché
+      - name: Setup Bun env
+        uses: ./.github/actions/setup
 
-      - name: Configurar runtime de Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.3.13"
-
-      # Caché de node_modules basado en el hash del lockfile para acelerar el pipeline
-      - name: Restaurar / Guardar caché de node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
-      - name: Instalar dependencias con Bun
-        run: bun install
-
-      - name: Ejecutar linter con Biome
-        run: bun run lint
-
-      - name: Verificar formato de código con Biome
+      # 3. Verifica formato y lint con Biome (sin escribir archivos)
+      - name: Format & lint check
         run: bun run check
 
-  # test: suite de pruebas automatizadas
+  # Job 2: pruebas (placeholder, sin tests configurados por ahora)
   test:
-    name: Pruebas Automatizadas
+    name: Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar código fuente del repositorio
-        uses: actions/checkout@v4
+      # 1. Clona el repositorio
+      - name: Checkout code
+        uses: actions/checkout@v7
 
-      - name: Configurar entorno de Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24.14.1"
+      # 2. Configura Node, Bun y dependencias con caché
+      - name: Setup Bun env
+        uses: ./.github/actions/setup
 
-      - name: Configurar runtime de Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.3.13"
-
-      # Caché de node_modules reutilizado entre jobs concurrentes
-      - name: Restaurar / Guardar caché de node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
-      - name: Instalar dependencias con Bun
-        run: bun install
-
-      - name: Ejecutar suite de pruebas
+      # 3. Ejecuta la suite de pruebas
+      - name: Run tests
         run: bun run test
 
-  # deploy: Dokploy VPS solo en push a main y con todo verde
+  # Job 3: despliegue en Dokploy (VPS) solo en push a main
   deploy:
-    name: Despliegue en VPS (Dokploy)
+    name: Deploy to Dokploy
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
-      - name: Ejecutar trigger de despliegue vía Dokploy API por SSH
+      # 1. Dispara el deploy en Dokploy vía SSH
+      - name: Trigger Dokploy deploy
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
