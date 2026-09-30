@@ -11,7 +11,7 @@ inputs:
   bun-version:
     description: Versión de Bun a utilizar
     required: false
-    default: "1.3.14"
+    default: "1.4.2"
   install-args:
     description: Flags extra para bun install
     required: false

@@ -1,18 +1,21 @@
-FROM oven/bun:latest
+FROM oven/bun:1.4.2
 
 WORKDIR /app
 
-# Dependencias con lockfile para aprovechar caché
+# 1. Solo dependencias de producción (las devDeps no se usan en runtime)
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile --production
 
-# Configuración y código fuente
-COPY drizzle.config.ts tsconfig.json ./
-COPY src ./src
+# 2. Código fuente con propietario sin privilegios
+COPY --chown=bun:bun src ./src
 
-# Entorno y puerto
 ENV NODE_ENV=production
 EXPOSE 3001
+USER bun
 
-# Iniciar servidor
+# 3. Healthcheck contra /api/health
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD bun -e "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 CMD ["bun", "run", "src/index.ts"]
