@@ -7,15 +7,15 @@ inputs:
   node-version:
     description: Versión de Node.js a utilizar
     required: false
-    default: "24.19.0"
+    default: "24.22.1"
   bun-version:
     description: Versión de Bun a utilizar
     required: false
-    default: "1.4.2"
+    default: "1.4.4"
   install-args:
     description: Flags extra para bun install
     required: false
-    default: ""
+    default: "--frozen-lockfile"
 
 runs:
   using: composite

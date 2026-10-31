@@ -1,4 +1,4 @@
-# MXWatch API CI/CD: lint y test en paralelo, deploy a Dokploy (VPS) solo en push a main
+# MXWatch API CI/CD: lint, tipos y build de imagen; deploy a Dokploy solo en push a main
 name: MXWatch API CI/CD
 
 # Disparadores: pushes y pull requests a las ramas principales
@@ -26,6 +26,7 @@ jobs:
   lint:
     name: Lint & Format Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # 1. Clona el repositorio
       - name: Checkout code
@@ -39,10 +40,11 @@ jobs:
       - name: Format & lint check
         run: bun run check
 
-  # Job 2: pruebas (placeholder, sin tests configurados por ahora)
-  test:
-    name: Tests
+  # Job 2: verificación de tipos con el compilador de TypeScript
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # 1. Clona el repositorio
       - name: Checkout code
@@ -52,28 +54,47 @@ jobs:
       - name: Setup Bun env
         uses: ./.github/actions/setup
 
-      # 3. Ejecuta la suite de pruebas
-      - name: Run tests
-        run: bun run test
+      # 3. Valida los tipos sin emitir archivos
+      - name: Typecheck
+        run: bun run typecheck
 
-  # Job 3: despliegue en Dokploy (VPS) solo en push a main
+  # Job 3: construye la imagen Docker para detectar fallos antes del despliegue
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # 1. Clona el repositorio
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # 2. Compila la imagen sin publicarla
+      - name: Build image
+        run: docker build --tag mxwatch-api:ci .
+
+  # Job 4: despliegue en Dokploy (VPS) solo en push a main.
+  # Sin SSH: el webhook se llama por HTTPS y Cloudflare Access lo autentica
+  # con un Service Token acotado a /api/deploy/*.
   deploy:
     name: Deploy to Dokploy
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [lint, test]
+    needs: [lint, typecheck, docker]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      # 1. Dispara el deploy en Dokploy vía SSH
-      - name: Trigger Dokploy deploy
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            echo "Iniciando despliegue de mxwatch-api en Dokploy..."
-            curl -X POST 'http://localhost:3000/api/application.deploy' \
-              -H 'Content-Type: application/json' \
-              -H 'x-api-key: ${{ secrets.DOKPLOY_API_TOKEN }}' \
-              -d '{"applicationId": "${{ secrets.DOKPLOY_APP_ID }}"}'
-            echo "Despliegue completado exitosamente!"
+      # 1. Dispara el deploy en Dokploy vía webhook autenticado
+      - name: Deploy via Dokploy webhook (Cloudflare Access)
+        env:
+          DOKPLOY_DEPLOY_TOKEN: ${{ secrets.DOKPLOY_DEPLOY_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent \
+            -X POST "https://dokploy.fluxdv.icu/api/deploy/${DOKPLOY_DEPLOY_TOKEN}" \
+            -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
+            -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
+            -H "content-type: application/json" \
+            -d '{"ref":"refs/heads/main"}'
+          echo
+          echo "Deploy solicitado a Dokploy."
