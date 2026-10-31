@@ -32,17 +32,17 @@ Guía operativa y técnica para agentes de Inteligencia Artificial que colaboren
 
 | Capa | Tecnología | Versión / Detalle |
 | :--- | :--- | :--- |
-| **Runtime & Gestor** | **Bun** | `v1.4.2` (`bun.lock`) |
+| **Runtime & Gestor** | **Bun** | `v1.4.4` (`bun.lock`) |
 | **Lenguaje** | **TypeScript** | Modo estricto con ESM nativo |
 | **Framework API** | **Hono** | `^4.13.12` (enrutamiento de ultra alto rendimiento) |
 | **Contratos & Docs** | **@hono/zod-openapi** + **@hono/swagger-ui** | `^1.6.3` / `^0.6.1` (especificación OpenAPI 3.1) |
-| **Base de Datos** | **PostgreSQL** | Cliente `postgres ^3.4.9` |
+| **Base de Datos** | **PostgreSQL** | Cliente `postgres ^4.0.0` |
 | **ORM & Migraciones** | **Drizzle ORM** + **Drizzle Kit** | `drizzle-orm ^0.45.3`, `drizzle-kit ^0.31.11` |
 | **Seguridad & Rate Limit** | **hono-rate-limiter** + Secure Headers | `^0.5.4` + API Key auth (`x-api-key`) |
-| **Validación de Datos** | **Zod 4** | `zod ^4.6.5` (DTOs y esquemas de validación) |
-| **Linter & Formatter** | **Biome 2** | `@biomejs/biome ^2.5.15` (`biome.json`) |
-| **Despliegue & Hosting** | **Dokploy / VPS (Docker)** + **Cloudflare Wrangler** | Imagen `Dockerfile` con Bun `1.4.2` (non-root, `--production`, healthcheck); trigger de deploy por SSH desde CI (`wrangler ^4.145.0`) |
-| **CI/CD** | **GitHub Actions** | Composite `./.github/actions/setup` (Bun `1.4.2`, Node `24.19.0`, cache de `node_modules`); lint/test y deploy a Dokploy en `main` |
+| **Validación de Datos** | **Zod 4** | `zod ^4.6.7` (DTOs y esquemas de validación) |
+| **Linter & Formatter** | **Biome 2** | `@biomejs/biome ^2.6.4` (`biome.json`) |
+| **Despliegue & Hosting** | **Dokploy / VPS (Docker)** | Imagen `Dockerfile` con Bun `1.4.4` (non-root, `--production`, healthcheck que respeta `PORT`); deploy por webhook HTTPS autenticado con Cloudflare Access (sin SSH) |
+| **CI/CD** | **GitHub Actions** | Composite `./.github/actions/setup` (Bun `1.4.4`, Node `24.22.1`, cache de `node_modules`, `--frozen-lockfile`); lint, typecheck y docker build en cada PR; deploy a Dokploy en `main` |
 
 ---
 
@@ -53,7 +53,7 @@ mxwatch-api/
 ├── .github/                       → Automatización (GitHub Actions)
 │   ├── actions/setup/action.yml   → Composite: Node/Bun + cache + install
 │   └── workflows/ci-cd.yml        → lint/test en paralelo + deploy a Dokploy en main
-├── Dockerfile                     → Imagen de producción (Bun 1.4.2, non-root, --production)
+├── Dockerfile                     → Imagen de producción (Bun 1.4.4, non-root, --production)
 ├── .dockerignore                  → Contexto de build limpio (node_modules, .git, .env*, etc.)
 ├── src/
 │   ├── config/
@@ -86,8 +86,7 @@ mxwatch-api/
 │   └── index.ts                   → Entry point: inicialización de Hono, middlewares, Swagger y listener
 ├── drizzle.config.ts              → Configuración de Drizzle Kit para PostgreSQL
 ├── biome.json                     → Reglas de formateo y validación de Biome
-├── package.json                   → Dependencias y scripts operativos con Bun
-└── wrangler.jsonc                 → Configuración de bindings en caso de despliegue a Workers
+└── package.json                   → Dependencias y scripts operativos con Bun
 ```
 
 ---
@@ -109,7 +108,7 @@ mxwatch-api/
 
 ## 6. Variables de Entorno
 
-Configuradas en `.dev.vars` (desarrollo local) o en las variables del contenedor/VPS en Dokploy:
+Configuradas en `.env` (desarrollo local) o en las variables del contenedor/VPS en Dokploy:
 
 | Variable | Descripción | Valor por Defecto / Ejemplo |
 | :--- | :--- | :--- |
@@ -136,11 +135,8 @@ bun run db:push
 # Poblar la base de datos con datos de semilla
 bun run db:seed
 
-# Desplegar a Cloudflare Workers con Wrangler
-bun run deploy
-
-# Generar tipos de bindings de Cloudflare
-bun run cf-typegen
+# Verificación de tipos (sin emitir archivos)
+bun run typecheck
 
 # Diagnóstico de linter y formato con Biome
 bun run check
@@ -153,11 +149,12 @@ bun run lint
 
 ## 8. CI/CD (GitHub Actions)
 
-Flujo: `push`/`PR` a `main`/`develop` → **lint** y **test** en paralelo → **deploy** solo en `push` a `main`.
+Flujo: `push`/`PR` a `main`/`develop` → **lint**, **typecheck** y **docker build** en paralelo → **deploy** solo en `push` a `main`.
 
-* Setup centralizado en la composite `./.github/actions/setup` (versiones Node/Bun + cache de `node_modules`).
-* `lint` corre `bun run check` (read-only); `test` corre `bun run test` (placeholder mientras no haya suite).
-* `deploy` dispara el despliegue en **Dokploy** por SSH; el build Docker ocurre en el VPS.
+* Setup centralizado en la composite `./.github/actions/setup` (versiones Node/Bun + cache de `node_modules` + `--frozen-lockfile`).
+* `lint` corre `bun run check` (`biome ci`, read-only) y `typecheck` corre `tsc --noEmit`.
+* `docker` construye la imagen sin publicarla, para detectar fallos del `Dockerfile` antes de `main`.
+* `deploy` dispara el despliegue en **Dokploy** por webhook HTTPS autenticado con Cloudflare Access (sin SSH); el build Docker ocurre en el VPS.
 * Hardening: `concurrency` (cancela runs obsoletos del mismo ref) y `permissions: contents: read`.
 
 ---
