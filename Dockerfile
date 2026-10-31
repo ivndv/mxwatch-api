@@ -1,21 +1,29 @@
-FROM oven/bun:1.4.2
+FROM oven/bun:1.4.4
 
 WORKDIR /app
 
-# 1. Solo dependencias de producción (las devDeps no se usan en runtime)
-COPY package.json bun.lock ./
-RUN --mount=type=cache,target=/root/.bun/install/cache \
+# Puerto por defecto del servidor (env.PORT); puede sobreescribirse en runtime
+ENV NODE_ENV=production \
+    PORT=3001
+
+# 1. Metadatos del paquete y dependencias de producción únicamente
+COPY --chown=bun:bun package.json bun.lock ./
+
+# 2. El directorio debe pertenecer al usuario sin privilegios antes de instalar
+RUN chown bun:bun /app
+
+# 3. Instala como usuario bun para que node_modules no quede en manos de root
+USER bun
+RUN --mount=type=cache,target=/home/bun/.bun/install/cache,uid=1000,gid=1000 \
     bun install --frozen-lockfile --production
 
-# 2. Código fuente con propietario sin privilegios
+# 4. Código fuente con propietario sin privilegios
 COPY --chown=bun:bun src ./src
 
-ENV NODE_ENV=production
 EXPOSE 3001
-USER bun
 
-# 3. Healthcheck contra /api/health
+# 5. Healthcheck contra /api/health respetando el puerto configurado
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD bun -e "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+    CMD bun -e "const port = process.env.PORT || 3001; fetch('http://localhost:' + port + '/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["bun", "run", "src/index.ts"]
