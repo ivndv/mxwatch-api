@@ -94,7 +94,8 @@ jobs:
             -X POST "https://dokploy.fluxdv.icu/api/deploy/${DOKPLOY_DEPLOY_TOKEN}" \
             -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
             -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
+            -H "x-github-event: push" \
             -H "content-type: application/json" \
-            -d '{"ref":"refs/heads/main"}'
+            -d '{"ref":"refs/heads/main","commits":[{"added":[],"modified":["README.md"],"removed":[]}],"head_commit":{"message":"Deploy from CI"}}'
           echo
           echo "Deploy solicitado a Dokploy."
