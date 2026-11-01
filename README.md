@@ -40,51 +40,13 @@ Las rutas `/api/health`, `/api/docs` y `/api/doc` son de acceso público sin aut
 - **Linter & Formateo**: Biome, TypeScript
 - **Contenedor**: Docker
 
-## Instalación
-
-1. **Clonar el Repositorio**:
-
-```bash
-git clone https://github.com/ivndv/mxwatch-api.git
-```
-
-2. **Instalar Dependencias**:
-
-```bash
-bun install
-```
-
-3. **Variables de Entorno**: Crea un archivo `.env` en la raíz (puedes guiarte con `.env.example`):
-
-```env
-DATABASE_URL=postgresql://postgres:password@127.0.0.1:5432/mxwatch_db
-API_KEY=tu_api_key_aqui
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
-PORT=3001
-API_VERSION=1.0.0
-```
-
-4. **Iniciar el Servidor**:
-
-```bash
-# Servidor de desarrollo con recarga en caliente:
-bun run dev
-
-# Aplicar cambios de esquema a la base de datos:
-bun run db:push
-
-# Cargar datos iniciales:
-bun run db:seed
-```
 
 ## Despliegue
 
-Desplegado con Dokploy en VPS. Documentación Swagger disponible en: [mxwatch-api](http://mxwatch-api.fluxdv.icu/api/docs)
+Desplegado con Dokploy en VPS. Documentación Swagger disponible en: [MXWatch API](https://mxwatch-api.fluxdv.icu/api/docs)
 
 ## Licencia
 
-Licencia de Uso Personal:
+[PolyForm Noncommercial 1.0.0](LICENSE). Uso personal y no comercial; el uso comercial requiere permiso.
 
-Este software es propiedad de **Ivan Cruz**. Se permite el uso de este software solo para fines personales y no comerciales. No se permite la distribución, modificación ni uso comercial de este software sin el consentimiento expreso de **Ivan Cruz**.
-
-Cualquier uso no autorizado puede resultar en acciones legales.
+© 2026 Ivan Cruz

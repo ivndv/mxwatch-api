@@ -10,7 +10,7 @@ Guía operativa y técnica para agentes de Inteligencia Artificial que colaboren
 
 * **Propósito:** Proveer una API HTTP rápida, tipada y documentada con OpenAPI/Swagger, estructurada sobre PostgreSQL y Drizzle ORM, protegida mediante autenticación server-to-server (`x-api-key`), limitación de tasa (rate limiting) y cabeceras de seguridad.
 * **Documentación en Vivo (Swagger):** [http://mxwatch-api.fluxdv.icu/api/docs](http://mxwatch-api.fluxdv.icu/api/docs)
-* **Repositorio:** [https://github.com/Ivandv19/mxwatch-api](https://github.com/Ivandv19/mxwatch-api)
+* **Repositorio:** [https://github.com/ivndv/mxwatch-api](https://github.com/ivndv/mxwatch-api)
 
 ---
 
