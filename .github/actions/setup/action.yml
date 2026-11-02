@@ -1,6 +1,6 @@
 # Action compuesta: configura Node.js y Bun con caché de dependencias
 name: Setup Bun env
-description: Configura Node, Bun, caché de node_modules e instala dependencias con Bun
+description: Configura Node, Bun, la caché global de Bun e instala dependencias con Bun
 
 inputs:
   # Versiones centralizadas del pipeline
@@ -32,14 +32,14 @@ runs:
       with:
         bun-version: ${{ inputs.bun-version }}
 
-    # 3. Restaura la caché de node_modules usando el hash de bun.lock
-    - name: Cache node_modules
+    # 3. Restaura la caché global de Bun (bun install la enlaza por hardlinks)
+    - name: Cache Bun store
       uses: actions/cache@v6
       with:
-        path: node_modules
-        key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+        path: ~/.bun/install/cache
+        key: ${{ runner.os }}-bun-store-${{ hashFiles('bun.lock') }}
         restore-keys: |
-          ${{ runner.os }}-bun-
+          ${{ runner.os }}-bun-store-
 
     # 4. Instala las dependencias del proyecto
     - name: Install dependencies
