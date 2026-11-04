@@ -25,7 +25,7 @@ jobs:
   # Job 1: lint y verificación de formato con Biome
   lint:
     name: Lint & Format Check
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64]
     timeout-minutes: 10
     steps:
       # 1. Clona el repositorio
@@ -43,7 +43,7 @@ jobs:
   # Job 2: verificación de tipos con el compilador de TypeScript
   typecheck:
     name: Typecheck
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64]
     timeout-minutes: 10
     steps:
       # 1. Clona el repositorio
@@ -61,7 +61,7 @@ jobs:
   # Job 3: construye la imagen Docker para detectar fallos antes del despliegue
   docker:
     name: Docker build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64]
     timeout-minutes: 15
     steps:
       # 1. Clona el repositorio
@@ -79,7 +79,7 @@ jobs:
     name: Deploy to Dokploy
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [lint, typecheck, docker]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64]
     timeout-minutes: 10
     steps:
       # 1. Dispara el deploy en Dokploy vía webhook autenticado
