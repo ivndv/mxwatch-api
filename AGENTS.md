@@ -1,34 +1,24 @@
-# AGENTS.md — Guía para Agentes en MXWatch API
+# AGENTS.md — mxwatch-api
 
-Guía operativa y técnica para agentes de Inteligencia Artificial que colaboren en el desarrollo, mantenimiento, optimización y resolución de incidencias en el backend de **MXWatch API**.
+Guía operativa y técnica para agentes de IA que colaboran en el desarrollo, mantenimiento, optimización y resolución de incidencias del backend.
 
----
-
-## 1. Visión General del Proyecto
+## 1. Visión general
 
 **MXWatch API** es el motor central de datos y backend REST para la plataforma MXWatch. Su responsabilidad principal es consultar, gestionar y proveer toda la información estadística, geográfica e inteligencia territorial que consume el mapa táctico interactivo (`mxwatch`).
 
-* **Propósito:** Proveer una API HTTP rápida, tipada y documentada con OpenAPI/Swagger, estructurada sobre PostgreSQL y Drizzle ORM, protegida mediante autenticación server-to-server (`x-api-key`), limitación de tasa (rate limiting) y cabeceras de seguridad.
-* **Documentación en Vivo (Swagger):** [http://mxwatch-api.fluxdv.icu/api/docs](http://mxwatch-api.fluxdv.icu/api/docs)
-* **Repositorio:** [https://github.com/ivndv/mxwatch-api](https://github.com/ivndv/mxwatch-api)
+- **Propósito:** API HTTP rápida, tipada y documentada con OpenAPI/Swagger, estructurada sobre PostgreSQL y Drizzle ORM, protegida mediante autenticación server-to-server (`x-api-key`), limitación de tasa y cabeceras de seguridad.
+- **Documentación en vivo (Swagger):** [http://mxwatch-api.fluxdv.icu/api/docs](http://mxwatch-api.fluxdv.icu/api/docs)
+- **Repositorio:** [https://github.com/ivndv/mxwatch-api](https://github.com/ivndv/mxwatch-api)
 
----
+## 2. Antes de tocar código
 
-## 2. Antes de Tocar Código
+**CodeGraph** (índice de símbolos del repo): usa `codegraph_explore` (`query`, `maxFiles`, `projectPath`) antes de un grep masivo o de leer varios archivos; devuelve fuente verbatim, rutas de llamada e impacto.
 
-* **Uso del MCP CodeGraph:** Antes de realizar búsquedas a ciegas o exploración masiva de archivos, utiliza la herramienta `codegraph_explore` para inspeccionar el flujo de llamadas y el código fuente verbatim de los controladores, schemas y modelos en una sola llamada eficiente.
-* **Estado y Sincronización:**
-  ```bash
-  # Verificar el estado del índice de CodeGraph
-  codegraph status /home/ivan/software-dev/mxwatch-api
+- `codegraph sync /home/ivan/software-dev/mxwatch-api` tras editar, pull o cambiar de rama (incremental, uso normal).
+- `codegraph index /home/ivan/software-dev/mxwatch-api` solo al crear el índice, tras `codegraph upgrade` o si `status` avisa `built by vX` (rebuild completo).
+- `codegraph status /home/ivan/software-dev/mxwatch-api` para comprobar el estado.
 
-  # Sincronizar cambios en el árbol de archivos
-  codegraph sync /home/ivan/software-dev/mxwatch-api
-  ```
-
----
-
-## 3. Stack Tecnológico
+## 3. Stack tecnológico
 
 | Capa | Tecnología | Versión / Detalle |
 | :--- | :--- | :--- |
@@ -36,19 +26,17 @@ Guía operativa y técnica para agentes de Inteligencia Artificial que colaboren
 | **Lenguaje** | **TypeScript** | Modo estricto con ESM nativo |
 | **Framework API** | **Hono** | `^4.13.12` (enrutamiento de ultra alto rendimiento) |
 | **Contratos & Docs** | **@hono/zod-openapi** + **@hono/swagger-ui** | `^1.6.3` / `^0.6.1` (especificación OpenAPI 3.1) |
-| **Base de Datos** | **PostgreSQL** | Cliente `postgres ^4.0.0` |
-| **ORM & Migraciones** | **Drizzle ORM** + **Drizzle Kit** | `drizzle-orm ^0.45.3`, `drizzle-kit ^0.31.11` |
-| **Seguridad & Rate Limit** | **hono-rate-limiter** + Secure Headers | `^0.5.4` + API Key auth (`x-api-key`) |
-| **Validación de Datos** | **Zod 4** | `zod ^4.6.7` (DTOs y esquemas de validación) |
+| **Base de datos** | **PostgreSQL** | Cliente `postgres ^4.0.0` |
+| **ORM & migraciones** | **Drizzle ORM** + **Drizzle Kit** | `drizzle-orm ^0.45.3`, `drizzle-kit ^0.31.11` |
+| **Seguridad & rate limit** | **hono-rate-limiter** + Secure Headers | `^0.5.4` + API Key auth (`x-api-key`) |
+| **Validación de datos** | **Zod 4** | `zod ^4.6.7` (DTOs y esquemas de validación) |
 | **Linter & Formatter** | **Biome 2** | `@biomejs/biome ^2.6.4` (`biome.json`) |
-| **Despliegue & Hosting** | **Dokploy / VPS (Docker)** | Imagen `Dockerfile` con Bun `1.4.4` (non-root, `--production`, healthcheck que respeta `PORT`); deploy por webhook HTTPS autenticado con Cloudflare Access (sin SSH) |
+| **Despliegue & hosting** | **Dokploy / VPS (Docker)** | Imagen `Dockerfile` con Bun `1.4.4` (non-root, `--production`, healthcheck que respeta `PORT`); deploy por webhook HTTPS autenticado con Cloudflare Access (sin SSH) |
 | **CI/CD** | **GitHub Actions** | Composite `./.github/actions/setup` (Bun `1.4.4`, Node `24.22.1`, cache de `node_modules`, `--frozen-lockfile`); lint, typecheck y docker build en cada PR; deploy a Dokploy en `main` |
 
----
+## 4. Estructura del código
 
-## 4. Estructura del Código
-
-```
+```plaintext
 mxwatch-api/
 ├── .github/                       → Automatización (GitHub Actions)
 │   ├── actions/setup/action.yml   → Composite: Node/Bun + cache + install
@@ -89,28 +77,28 @@ mxwatch-api/
 └── package.json                   → Dependencias y scripts operativos con Bun
 ```
 
----
+## 5. Arquitectura y flujo de datos
 
-## 5. Endpoints y Arquitectura de la API
+La API se compone de rutas declaradas con `@hono/zod-openapi` (`src/routes/`), controladores que consultan PostgreSQL vía Drizzle (`src/controllers/`) y esquemas Zod compartidos (`src/schemas/`). El entrypoint `src/index.ts` registra los middlewares de `src/middlewares/`: autenticación `x-api-key` (fail-closed) en rutas protegidas, límite de payload, CORS, rate limit y cabeceras de seguridad.
 
-### 🌐 Rutas Públicas (Sin API Key)
-* `GET /api/health`: Healthcheck del servicio y verificación operativa.
-* `GET /api/docs`: Interfaz Swagger UI para exploración interactiva.
-* `GET /api/doc`: Especificación OpenAPI en formato JSON.
+### 5.1 Rutas públicas (sin API Key)
 
-### 🔐 Rutas Protegidas (Requieren Header `x-api-key`)
-* `GET /api/map`: Retorna el consolidado de presencia de cárteles por estado para colorear el mapa en el frontend.
-* `GET /api/cartels`: Retorna el catálogo maestro de cárteles y organizaciones.
-* `GET /api/cartel/{slug}`: Retorna la ficha técnica, liderazgos y presencia territorial de un cártel específico.
-* `GET /api/state/{name}`: Retorna la inteligencia detallada, eventos recientes y organizaciones activas en dicho estado.
+- `GET /api/health`: healthcheck del servicio y verificación operativa.
+- `GET /api/docs`: interfaz Swagger UI para exploración interactiva.
+- `GET /api/doc`: especificación OpenAPI en formato JSON.
 
----
+### 5.2 Rutas protegidas (requieren header `x-api-key`)
 
-## 6. Variables de Entorno
+- `GET /api/map`: consolidado de presencia de cárteles por estado para colorear el mapa en el frontend.
+- `GET /api/cartels`: catálogo maestro de cárteles y organizaciones.
+- `GET /api/cartel/{slug}`: ficha técnica, liderazgos y presencia territorial de un cártel específico.
+- `GET /api/state/{name}`: inteligencia detallada, eventos recientes y organizaciones activas en dicho estado.
+
+## 6. Variables de entorno
 
 Configuradas en `.env` (desarrollo local) o en las variables del contenedor/VPS en Dokploy:
 
-| Variable | Descripción | Valor por Defecto / Ejemplo |
+| Variable | Descripción | Valor por defecto / ejemplo |
 | :--- | :--- | :--- |
 | `DATABASE_URL` | String de conexión a la base de datos PostgreSQL | `postgres://user:password@localhost:5432/mxwatch` |
 | `API_KEY` | Clave secreta requerida en el header `x-api-key` | Token seguro alfanumérico |
@@ -118,9 +106,7 @@ Configuradas en `.env` (desarrollo local) o en las variables del contenedor/VPS 
 | `CORS_ORIGINS` | Lista separada por comas de dominios autorizados | `http://localhost:3000,http://localhost:3001` |
 | `API_VERSION` | Versión semántica reportada en OpenAPI | `1.0.0` |
 
----
-
-## 7. Comandos Operativos (Bun)
+## 7. Comandos
 
 ```bash
 # Servidor de desarrollo con recarga en caliente
@@ -145,24 +131,27 @@ bun run check
 bun run lint
 ```
 
----
+## 8. Convenciones y reglas críticas
 
-## 8. CI/CD (GitHub Actions)
+- **Gestor de paquetes exclusivo:** usa siempre **`bun`**. Nunca ejecutes `npm`, `yarn` ni `pnpm`.
+- **Autenticación fail-closed:** nunca relajes la verificación de `API_KEY` en `middlewares/auth.ts` sin autorización explícita.
+- **Validación OpenAPI estricta:** cualquier endpoint nuevo debe definirse primero como ruta OpenAPI con sus esquemas Zod en `src/routes/` y `src/schemas/`.
+- **Seguridad transversal:** conserva `bodyLimit`, `rateLimit`, `secureHeaders` y la lista de `CORS_ORIGINS` en todas las rutas que corresponda.
+- **Base de datos:** los cambios de esquema se declaran en `src/db/schema.ts` y se aplican con Drizzle Kit (`bun run db:push`).
+
+## 9. Flujo de Git y despliegue
+
+- **Prohibido realizar `git commit` o `git push` sin la confirmación y aprobación explícita del usuario.**
+- **Ramas:** el desarrollo se realiza en `develop`; el merge a `main` solo se hace con aprobación explícita y es el que dispara el despliegue.
+- **Mensajes de commit:** Conventional Commits en minúsculas y español (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, `refactor: ...`).
+- **Despliegue:** en `main`, el pipeline dispara el redeploy en Dokploy por webhook HTTPS autenticado con Cloudflare Access (sin SSH); el build Docker ocurre en el VPS.
+
+## 10. CI/CD
 
 Flujo: `push`/`PR` a `main`/`develop` → **lint**, **typecheck** y **docker build** en paralelo → **deploy** solo en `push` a `main`.
 
-* Setup centralizado en la composite `./.github/actions/setup` (versiones Node/Bun + cache de `node_modules` + `--frozen-lockfile`).
-* `lint` corre `bun run check` (`biome ci`, read-only) y `typecheck` corre `tsc --noEmit`.
-* `docker` construye la imagen sin publicarla, para detectar fallos del `Dockerfile` antes de `main`.
-* `deploy` dispara el despliegue en **Dokploy** por webhook HTTPS autenticado con Cloudflare Access (sin SSH); el build Docker ocurre en el VPS.
-* Hardening: `concurrency` (cancela runs obsoletos del mismo ref) y `permissions: contents: read`.
-
----
-
-## 9. Reglas Críticas para Agentes
-
-1. **Gestor de Paquetes Exclusivo:** Utiliza siempre **`bun`**. Nunca ejecutes `npm`, `yarn` ni `pnpm`.
-2. **Autenticación Fail-Closed:** Nunca relajes la verificación de `API_KEY` en `middlewares/auth.ts` sin autorización explícita.
-3. **Validación OpenAPI Estricta:** Cualquier endpoint nuevo debe definirse primero como ruta OpenAPI con sus schemas de Zod en `src/routes/` y `src/schemas/`.
-4. **Flujo de Git:** **NO realices `git commit` ni `git push` sin la confirmación explícita del usuario**.
-5. **Sincronización de CodeGraph:** Tras crear, editar o renombrar controladores, esquemas o rutas, ejecuta `codegraph sync /home/ivan/software-dev/mxwatch-api`.
+- Setup centralizado en la composite `./.github/actions/setup` (versiones Node/Bun + cache de `node_modules` + `--frozen-lockfile`).
+- `lint` corre `bun run check` (`biome ci`, read-only) y `typecheck` corre `tsc --noEmit`.
+- `docker` construye la imagen sin publicarla, para detectar fallos del `Dockerfile` antes de `main`.
+- `deploy` dispara el despliegue en **Dokploy** por webhook HTTPS autenticado con Cloudflare Access (sin SSH); el build Docker ocurre en el VPS.
+- Hardening: `concurrency` (cancela runs obsoletos del mismo ref) y `permissions: contents: read`.
