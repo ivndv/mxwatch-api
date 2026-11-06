@@ -91,7 +91,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --show-error --silent \
-            -X POST "https://dokploy.fluxdv.icu/api/deploy/${DOKPLOY_DEPLOY_TOKEN}" \
+            -X POST "https://dokploy.liuma.app/api/deploy/${DOKPLOY_DEPLOY_TOKEN}" \
             -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
             -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
             -H "x-github-event: push" \
