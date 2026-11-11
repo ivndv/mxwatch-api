@@ -43,7 +43,7 @@ Las rutas `/api/health`, `/api/docs` y `/api/doc` son de acceso público sin aut
 
 ## Despliegue
 
-Desplegado con Dokploy en VPS. Documentación Swagger disponible en: [MXWatch API](https://mxwatch-api.fluxdv.icu/api/docs)
+Desplegado con Dokploy en VPS. Documentación Swagger disponible en: [MXWatch API](https://mxwatch-api.liuma.app/api/docs)
 
 ## Licencia
 
